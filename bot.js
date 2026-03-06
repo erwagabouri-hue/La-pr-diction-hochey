@@ -1,72 +1,157 @@
-const TelegramBot = require('node-telegram-bot-api');
+const TelegramBot = require("node-telegram-bot-api");
+const axios = require("axios");
 
 const token = process.env.TOKEN;
+const apiKey = process.env.API_KEY;
 
 const bot = new TelegramBot(token, { polling: true });
+
+let wins = 0;
+let losses = 0;
 
 // MENU
 const menu = {
   reply_markup: {
     keyboard: [
-      ["📊 Pronostics du jour"],
-      ["🔥 Matchs sûrs"],
-      ["📈 Statistiques"],
-      ["ℹ️ Aide"]
+      ["💰 Cote sûre 1.25 - 1.60"],
+      ["🔥 Combiné 3 matchs"],
+      ["📊 Statistiques du bot"],
+      ["📩 Contact Instagram"],
+      ["🤖 Football & Basket bot"]
     ],
     resize_keyboard: true
   }
 };
 
-// Commande start
+// START
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "🏒 Bienvenue dans le bot de pronostics Hockey", menu);
+  bot.sendMessage(
+    msg.chat.id,
+    "🏒 Bienvenue dans le bot de pronostics Hockey IA",
+    menu
+  );
 });
 
-// Boutons
-bot.on("message", (msg) => {
+// ANALYSE API
+async function getGames() {
 
-  const text = msg.text;
+  const leagues = [57, 58, 59]; // NHL + autres ligues
+
+  let games = [];
+
+  for (const league of leagues) {
+
+    const response = await axios.get(
+      `https://v1.hockey.api-sports.io/games?league=${league}&season=2024`,
+      {
+        headers: {
+          "x-apisports-key": apiKey
+        }
+      }
+    );
+
+    games = games.concat(response.data.response);
+  }
+
+  return games.slice(0,10);
+}
+
+// COTE SÛRE
+async function safeBet() {
+
+  const games = await getGames();
+  const game = games[Math.floor(Math.random() * games.length)];
+
+  const home = game.teams.home.name;
+  const away = game.teams.away.name;
+
+  const odds = (Math.random() * (1.60 - 1.25) + 1.25).toFixed(2);
+
+  return `💰 PARI SÛR
+
+${away} vs ${home}
+
+Pronostic : +2.5 buts
+
+Cote : ${odds}`;
+}
+
+// COMBINÉ
+async function comboBet() {
+
+  const games = await getGames();
+
+  const selected = games.slice(0,3);
+
+  let totalOdds = 1;
+  let message = "🔥 COMBINÉ 3 MATCHS\n\n";
+
+  selected.forEach(game => {
+
+    const home = game.teams.home.name;
+    const away = game.teams.away.name;
+
+    const odds = (Math.random() * 1.5 + 1.2).toFixed(2);
+
+    totalOdds *= odds;
+
+    message += `${away} vs ${home}
+Pronostic : +2.5 buts
+Cote : ${odds}
+
+`;
+  });
+
+  message += `🎯 COTE TOTALE : ${totalOdds.toFixed(2)}`;
+
+  return message;
+}
+
+// BOUTONS
+bot.on("message", async (msg) => {
+
   const chatId = msg.chat.id;
+  const text = msg.text;
 
-  if (text === "📊 Pronostics du jour") {
-    bot.sendMessage(chatId,
-`🏒 Pronostics Hockey
+  if (text === "💰 Cote sûre 1.25 - 1.60") {
 
-Toronto Maple Leafs vs Rangers
-✔️ Victoire Toronto
+    const bet = await safeBet();
 
-Canadiens vs Bruins
-✔️ +4.5 buts
-
-Avalanche vs Stars
-✔️ Victoire Avalanche`);
+    bot.sendMessage(chatId, bet);
   }
 
-  if (text === "🔥 Matchs sûrs") {
-    bot.sendMessage(chatId,
-`🔥 Matchs sûrs
+  if (text === "🔥 Combiné 3 matchs") {
 
-✔️ Edmonton Oilers gagne
-✔️ Tampa Bay gagne
-✔️ Over 5.5 buts`);
+    const combo = await comboBet();
+
+    bot.sendMessage(chatId, combo);
   }
 
-  if (text === "📈 Statistiques") {
-    bot.sendMessage(chatId,
-`📈 Statistiques
+  if (text === "📊 Statistiques du bot") {
 
-Derniers pronostics :
-✅ 7 gagnés
-❌ 2 perdus
+    bot.sendMessage(
+      chatId,
+      `📊 Statistiques
 
-Précision : 78%`);
+✅ Victoires : ${wins}
+❌ Défaites : ${losses}`
+    );
   }
 
-  if (text === "ℹ️ Aide") {
-    bot.sendMessage(chatId,
-`ℹ️ Aide
+  if (text === "📩 Contact Instagram") {
 
-Utilise les boutons pour voir les pronostics du jour.`);
+    bot.sendMessage(
+      chatId,
+      "Contactez-nous : https://www.instagram.com/la_prediction777?igsh=MXJyNW82ajU3NDM4Yw%3D%3D&utm_source=qr"
+    );
+  }
+
+  if (text === "🤖 Football & Basket bot") {
+
+    bot.sendMessage(
+      chatId,
+      "Bot Football & Basket : https://t.me/PerfctIAbot?start=start"
+    );
   }
 
 });
