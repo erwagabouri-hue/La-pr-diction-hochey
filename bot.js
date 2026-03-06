@@ -6,11 +6,9 @@ const apiKey = process.env.API_KEY;
 
 const bot = new TelegramBot(token, { polling: true });
 
-// Statistiques du bot
 let wins = 0;
 let losses = 0;
 
-// Menu principal
 const menu = {
   reply_markup: {
     keyboard: [
@@ -24,54 +22,28 @@ const menu = {
   }
 };
 
-// /start
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, "🏒 Bienvenue dans LA PRÉDICTION HOCKEY", menu);
+  bot.sendMessage(msg.chat.id, "🏒 LA PRÉDICTION HOCKEY", menu);
 });
 
-// Obtenir la date du jour
-function getTodayDate() {
+function today() {
   return new Date().toISOString().split("T")[0];
 }
 
-// Récupérer les matchs d’aujourd’hui (plusieurs ligues)
 async function getTodayGames() {
 
-  const today = getTodayDate();
-
-  const leagues = [
-    57, // NHL
-    58, // AHL
-    59, // Liiga
-    60, // SHL
-    61  // KHL
-  ];
-
-  let games = [];
-
-  for (const league of leagues) {
-    try {
-
-      const response = await axios.get(
-        `https://v1.hockey.api-sports.io/games?league=${league}&date=${today}`,
-        {
-          headers: {
-            "x-apisports-key": apiKey
-          }
-        }
-      );
-
-      if (response.data.response.length > 0) {
-        games = games.concat(response.data.response);
+  const response = await axios.get(
+    `https://v1.hockey.api-sports.io/games?date=${today()}`,
+    {
+      headers: {
+        "x-apisports-key": apiKey
       }
+    }
+  );
 
-    } catch (err) {}
-  }
-
-  return games;
+  return response.data.response;
 }
 
-// Récupérer les cotes d’un match
 async function getOdds(gameId) {
 
   try {
@@ -85,18 +57,17 @@ async function getOdds(gameId) {
       }
     );
 
-    const data = response.data.response;
+    const odds = response.data.response;
 
-    if (!data || data.length === 0) return null;
+    if (!odds || odds.length === 0) return null;
 
-    const bookmaker = data[0].bookmakers[0];
+    const bookmaker = odds[0].bookmakers[0];
     const bet = bookmaker.bets[0];
-
-    const value = bet.values[Math.floor(Math.random() * bet.values.length)];
+    const value = bet.values[0];
 
     return {
-      bet: bet.name,
-      value: value.value,
+      market: bet.name,
+      prediction: value.value,
       odd: value.odd
     };
 
@@ -105,7 +76,6 @@ async function getOdds(gameId) {
   }
 }
 
-// Pari sûr 1.25–1.60
 async function safeBet() {
 
   const games = await getTodayGames();
@@ -116,34 +86,30 @@ async function safeBet() {
 
     if (!odds) continue;
 
-    const oddValue = parseFloat(odds.odd);
+    const odd = parseFloat(odds.odd);
 
-    if (oddValue >= 1.25 && oddValue <= 1.60) {
-
-      const home = game.teams.home.name;
-      const away = game.teams.away.name;
+    if (odd >= 1.25 && odd <= 1.60) {
 
       return `💰 PARI SÛR
 
-${away} vs ${home}
+${game.teams.away.name} vs ${game.teams.home.name}
 
-Marché : ${odds.bet}
-Pronostic : ${odds.value}
+Marché : ${odds.market}
+Pronostic : ${odds.prediction}
 
 Cote : ${odds.odd}`;
     }
   }
 
-  return "Aucun pari sûr trouvé aujourd’hui.";
+  return "Aucun pari sûr aujourd'hui.";
 }
 
-// Combiné 3 matchs
 async function comboBet() {
 
   const games = await getTodayGames();
 
-  let message = "🔥 COMBINÉ 3 MATCHS\n\n";
   let total = 1;
+  let message = "🔥 COMBINÉ 3 MATCHS\n\n";
   let count = 0;
 
   for (const game of games) {
@@ -152,35 +118,31 @@ async function comboBet() {
 
     if (!odds) continue;
 
-    const home = game.teams.home.name;
-    const away = game.teams.away.name;
+    const odd = parseFloat(odds.odd);
 
-    const oddValue = parseFloat(odds.odd);
+    if (odd >= 1.20 && odd <= 2.20) {
 
-    if (oddValue > 1.20 && oddValue < 2.50) {
-
-      message += `${away} vs ${home}
-Marché : ${odds.bet}
-Pronostic : ${odds.value}
+      message += `${game.teams.away.name} vs ${game.teams.home.name}
+Marché : ${odds.market}
+Pronostic : ${odds.prediction}
 Cote : ${odds.odd}
 
 `;
 
-      total *= oddValue;
+      total *= odd;
       count++;
 
       if (count === 3) break;
     }
   }
 
-  if (count < 3) return "Pas assez de matchs disponibles.";
+  if (count < 3) return "Pas assez de matchs disponibles aujourd'hui.";
 
   message += `🎯 COTE TOTALE : ${total.toFixed(2)}`;
 
   return message;
 }
 
-// Gestion des boutons
 bot.on("message", async (msg) => {
 
   const chatId = msg.chat.id;
@@ -213,7 +175,7 @@ bot.on("message", async (msg) => {
 
     bot.sendMessage(
       chatId,
-      "https://www.instagram.com/la_prediction777?igsh=MXJyNW82ajU3NDM4Yw%3D%3D&utm_source=qr"
+      "https://www.instagram.com/la_prediction777"
     );
   }
 
