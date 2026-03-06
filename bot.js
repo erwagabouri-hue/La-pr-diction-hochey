@@ -1,9 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const axios = require("axios");
 
-const token = process.env.TOKEN;
-
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(process.env.TOKEN, { polling: true });
 
 let wins = 0;
 let losses = 0;
@@ -25,13 +23,11 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, "🏒 LA PRÉDICTION HOCKEY NHL", menu);
 });
 
-// date aujourd'hui
 function today() {
   return new Date().toISOString().split("T")[0];
 }
 
-// récupérer les vrais matchs NHL
-async function getNHLGames() {
+async function getGames() {
 
   const response = await axios.get(
     `https://api-web.nhle.com/v1/schedule/${today()}`
@@ -50,32 +46,26 @@ async function getNHLGames() {
   return games;
 }
 
-// analyse simple
-function analyseGame(home, away) {
+function analyse(home, away) {
 
-  const predictions = [
+  const bets = [
     `${home} gagne`,
     `${away} gagne`,
     `Plus de 4.5 buts`,
     `Plus de 5.5 buts`,
-    `Les deux équipes marquent`
+    `${home} gagne ou nul`
   ];
 
-  const prediction =
-    predictions[Math.floor(Math.random() * predictions.length)];
+  const bet = bets[Math.floor(Math.random() * bets.length)];
 
   const confidence = Math.floor(Math.random() * 15) + 80;
 
-  return {
-    prediction,
-    confidence
-  };
+  return { bet, confidence };
 }
 
-// SAFE
-async function safeBet() {
+async function safePick() {
 
-  const games = await getNHLGames();
+  const games = await getGames();
 
   if (games.length === 0) {
     return "❌ Aucun match NHL aujourd'hui.";
@@ -86,7 +76,7 @@ async function safeBet() {
   const home = game.homeTeam.name.default;
   const away = game.awayTeam.name.default;
 
-  const analysis = analyseGame(home, away);
+  const analysis = analyse(home, away);
 
   const odd = (Math.random() * 0.35 + 1.25).toFixed(2);
 
@@ -94,23 +84,22 @@ async function safeBet() {
 
 ${away} vs ${home}
 
-🎯 Pari conseillé :
-${analysis.prediction}
+🎯 Pari conseillé
+${analysis.bet}
 
-📊 Confiance :
-${analysis.confidence}%
+📊 Confiance
+${analysis.confidence} %
 
-💰 Cote :
+💰 Cote
 ${odd}`;
 }
 
-// combiné
-async function comboBet() {
+async function comboPick() {
 
-  const games = await getNHLGames();
+  const games = await getGames();
 
   if (games.length < 3) {
-    return "❌ Pas assez de matchs NHL aujourd'hui.";
+    return "❌ Pas assez de matchs aujourd'hui.";
   }
 
   let message = "🔥 COMBINÉ NHL\n\n";
@@ -123,7 +112,7 @@ async function comboBet() {
     const home = game.homeTeam.name.default;
     const away = game.awayTeam.name.default;
 
-    const analysis = analyseGame(home, away);
+    const analysis = analyse(home, away);
 
     const odd = (Math.random() * 0.9 + 1.40).toFixed(2);
 
@@ -131,10 +120,10 @@ async function comboBet() {
 
     message += `${away} vs ${home}
 
-🎯 Pari :
-${analysis.prediction}
+🎯 Pari
+${analysis.bet}
 
-💰 Cote :
+💰 Cote
 ${odd}
 
 `;
@@ -145,49 +134,47 @@ ${odd}
   return message;
 }
 
-// boutons
 bot.on("message", async (msg) => {
 
-  const chatId = msg.chat.id;
   const text = msg.text;
+  const chatId = msg.chat.id;
 
-  if (text === "🍀 SAFE") {
+  if (text.includes("SAFE")) {
 
-    const bet = await safeBet();
+    const bet = await safePick();
     bot.sendMessage(chatId, bet);
+
   }
 
-  if (text === "🔥 COMBINÉ NHL") {
+  else if (text.includes("COMBINÉ")) {
 
-    const combo = await comboBet();
+    const combo = await comboPick();
     bot.sendMessage(chatId, combo);
+
   }
 
-  if (text === "📊 Statistiques du bot") {
+  else if (text.includes("Statistiques")) {
 
-    bot.sendMessage(
-      chatId,
-      `📊 Statistiques
+    bot.sendMessage(chatId,
+`📊 Statistiques
 
 ✅ Victoires : ${wins}
-❌ Défaites : ${losses}`
-    );
+❌ Défaites : ${losses}`);
+
   }
 
-  if (text === "📩 Contact Instagram") {
+  else if (text.includes("Instagram")) {
 
-    bot.sendMessage(
-      chatId,
-      "https://www.instagram.com/la_prediction777"
-    );
+    bot.sendMessage(chatId,
+"https://www.instagram.com/la_prediction777");
+
   }
 
-  if (text === "🤖 Football & Basket bot") {
+  else if (text.includes("Football")) {
 
-    bot.sendMessage(
-      chatId,
-      "https://t.me/PerfctIAbot?start=start"
-    );
+    bot.sendMessage(chatId,
+"https://t.me/PerfctIAbot?start=start");
+
   }
 
 });
