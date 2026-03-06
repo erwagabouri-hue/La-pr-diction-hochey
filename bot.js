@@ -29,21 +29,28 @@ function today() {
 
 async function getGames() {
 
-  const response = await axios.get(
-    `https://api-web.nhle.com/v1/schedule/${today()}`
-  );
+  try {
 
-  let games = [];
+    const response = await axios.get(
+      `https://api-web.nhle.com/v1/schedule/${today()}`
+    );
 
-  response.data.gameWeek.forEach(day => {
+    let games = [];
 
-    day.games.forEach(game => {
-      games.push(game);
+    response.data.gameWeek.forEach(day => {
+      day.games.forEach(game => {
+        games.push(game);
+      });
     });
 
-  });
+    return games;
 
-  return games;
+  } catch (error) {
+
+    return [];
+
+  }
+
 }
 
 function analyse(home, away) {
@@ -52,15 +59,14 @@ function analyse(home, away) {
     `${home} gagne`,
     `${away} gagne`,
     `Plus de 4.5 buts`,
-    `Plus de 5.5 buts`,
-    `${home} gagne ou nul`
+    `Plus de 5.5 buts`
   ];
 
   const bet = bets[Math.floor(Math.random() * bets.length)];
-
   const confidence = Math.floor(Math.random() * 15) + 80;
 
   return { bet, confidence };
+
 }
 
 async function safePick() {
@@ -92,6 +98,7 @@ ${analysis.confidence} %
 
 💰 Cote
 ${odd}`;
+
 }
 
 async function comboPick() {
@@ -127,17 +134,21 @@ ${analysis.bet}
 ${odd}
 
 `;
+
   }
 
   message += `🎯 COTE TOTALE : ${total.toFixed(2)}`;
 
   return message;
+
 }
 
 bot.on("message", async (msg) => {
 
   const text = msg.text;
   const chatId = msg.chat.id;
+
+  if (!text) return;
 
   if (text.includes("SAFE")) {
 
