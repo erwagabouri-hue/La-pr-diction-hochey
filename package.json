@@ -1,0 +1,33 @@
+{
+  "name": "solarbot",
+  "version": "1.0.0",
+  "description": "Assistant IA pour chantiers photovoltaïques — Telegram Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "node-telegram-bot-api": "^0.64.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "photovoltaique",
+    "solaire",
+    "huawei",
+    "enphase",
+    "atmoce",
+    "ia",
+    "claude"
+  ],
+  "author": "SolarBot",
+  "license": "MIT"
+}
